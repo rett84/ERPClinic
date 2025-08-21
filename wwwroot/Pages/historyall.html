@@ -1,0 +1,247 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Appointments History</title>
+
+    <link href="../DataTables/datatables.css" rel="stylesheet" />
+    <link href="../DataTables/buttons.dataTables.css" rel="stylesheet" />
+    <link href="../DataTables/select.dataTables.css" rel="stylesheet" />
+    <link href="../DataTables/dataTables.dateTime.min.css" rel="stylesheet" />
+    <link href="../DataTables/fixedHeader.dataTables.min.css" rel="stylesheet">
+    <link href="../DataTables/stateRestore.dataTables.min.css" rel="stylesheet">
+    <link href="../app.css" rel="stylesheet" />
+
+    <style type="text/css" class="init">
+
+        table {
+            table-layout: fixed;
+        }
+
+        .semi-transparent-box {
+            background-color: rgba(0, 0, 0, 0.1); /* Semi-transparent black background */
+            border-radius: 15px;
+            padding: 20px; 
+            color: grey;
+            max-width: 400px; /* Optional: Limit the width of the box */
+            margin: 0px; 
+        }
+
+        .plus-button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+            .plus-button:hover {
+                background-color: #0056b3; /* darker blue */
+                transform: scale(1.05); /* slightly grow */
+            }
+    </style>
+
+
+
+    <script src="../DataTables/jquery-3.7.1.min.js"></script>
+    <script src="../DataTables/datatables.js"></script>
+    <script src="../DataTables/dataTables.buttons.js"></script>
+    <script src="../DataTables/buttons.dataTables.js"></script>
+    <script src="../DataTables/dataTables.select.js"></script>
+    <script src="../DataTables/select.dataTables.js"></script>
+    <script src="../DataTables/dataTables.dateTime.min.js"></script>
+    <script src="../DataTables/moment.min.js"></script>
+    <script src="../DataTables/datetime-moment.js"></script>
+    <script src="../DataTables/dataTables.fixedHeader.min.js"></script>
+    <script src="../DataTables/jszip.min.js"></script>
+    <script src="../DataTables/pdfmake.min.js"></script>
+    <script src="../DataTables/vfs_fonts.js"></script>
+    <script src="../DataTables/buttons.html5.min.js"></script>
+    <script src="../DataTables/buttons.print.min.js"></script>
+
+
+
+    <script type="text/javascript">
+
+
+        $(document).ready(function () {
+
+
+
+            var table = new DataTable('#mainGrid', {
+                "lengthMenu": [10, 25, 50, 100, { label: 'All', value: -1 }],
+                "pageLength": 10,
+                "fixedHeader": {
+                    footer: true
+                },
+                initComplete: function () {
+
+
+                    var minDate, maxDate;
+
+                    //Custom filtering function which will search data
+                    //in column 1 between two values - 0 index columns
+                    DataTable.ext.search.push(function (settings, data, dataIndex) {
+                        var min = minDate.val();
+                        var max = maxDate.val();
+                        var date = new Date(data[1]); //Date column date search
+
+                        if (
+                            (min === null && max === null) ||
+                            (min === null && date <= max) ||
+                            (min <= date && max === null) ||
+                            (min <= date && date <= max)
+                        ) {
+                            return true;
+                        }
+                        return false;
+                    });
+
+                    //Create date inputs
+                    minDate = new DateTime('#txtdatestart', {
+                        format: 'MMMM Do YYYY'
+                    });
+                    maxDate = new DateTime('#txtdateend', {
+                        format: 'MMMM Do YYYY'
+                    });
+
+
+                    //Refilter the table
+                    $('#txtdatestart, #txtdateend').on('change', function () {
+                        if ($("#txtdatestart").val() == "") {
+
+                            minDate.val(null);
+                        }
+                        if ($("#txtdateend").val() == "") {
+
+                            maxDate.val(null);
+
+                        }
+                        //Search and draw
+                        table.search()
+                        table.draw();
+                    });
+
+                    //Clear filters
+                    $('#clearDates').on('click', () => {
+                        // Clear date input values
+                        $("#txtdatestart, #txtdateend").val("");
+                        //Set those null as well
+                        minDate.val(null)
+                        maxDate.val(null)
+                        table.draw();
+                    });
+                },
+
+                layout: {
+                    topStart: {
+                        buttons: ['copy', 'csv', 'excel', 'pdf', 'print', 'pageLength']
+                    }
+                },
+
+                "ajax": {
+                    url: `/api/appointments/all`,
+                    type: "GET",
+                    dataSrc: ''
+                },
+
+                order: [[0, 'asc']],
+
+                "columns": [
+                    { "data": 'client.name', 'width': '150px' },
+                    {
+                        "data": 'dateTime', 'width': '150px',
+                        render: function (data, type, row, meta) {
+                            if (type === 'sort' || type === 'type') {
+                                return data; // Return original data for sorting and type
+                            }
+                            // Parse the UTC date, convert to local, and format
+                            return moment(data).local().format('YYYY-MM-DD hh:mm:ss A');
+                        }
+                    },
+                    { "data": 'details', 'width': '200px' },
+                    {
+                        "data": 'amount', 'width': '100px',
+                        render: DataTable.render.number(null, null, 2, '$')
+                    },
+                    { "data": 'paid', 'width': '150px' },
+                    {
+                        "data": 'received', 'width': '100px',
+                        render: DataTable.render.number(null, null, 2, '$')
+                    },
+                    { "data": 'notes', 'width': '200px' }
+
+                ],
+            });
+
+
+
+        });
+
+
+
+
+    </script>
+
+</head>
+<body>
+
+    <div style="display: flex; flex-direction: row; align-items: center; gap: 10px;">
+        <h1>History of Appointments</h1>
+
+        <button class="no-print, plus-button" style="margin-left:500px" onclick="window.location.href='../Pages/clients.html';">
+            Back to Clients List
+        </button>
+    </div>
+
+
+    <div style="margin-bottom: 20px; margin-top: 20px; display: flex; gap: 20px; align-items: flex-end;">
+        <div>
+            <label for="txtdatestart">Start Date:</label><br />
+            <input type="text" id="txtdatestart" />
+        </div>
+        <div>
+            <label for="txtdateend">End Date:</label><br />
+            <input type="text" id="txtdateend" />
+        </div>
+        <div>
+            <button type="button" id="clearDates" style="margin-right: 10px;">Clear Dates</button>
+        </div>
+
+    </div>
+
+
+    <div class="container" style="margin-top: 20px;">
+        <!--Grid declaration-->
+        <table id="mainGrid" class="display" style="width:60%">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Details</th>
+                    <th>Amount</th>
+                    <th>Paid</th>
+                    <th>Received</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tfoot>
+                <tr>
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Details</th>
+                    <th>Amount</th>
+                    <th>Paid</th>
+                    <th>Received</th>
+                    <th>Notes</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+</body>
+</html>

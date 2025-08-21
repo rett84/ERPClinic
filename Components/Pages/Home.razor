@@ -1,0 +1,98 @@
+﻿@page "/en"
+
+<PageTitle>Home</PageTitle>
+
+<style type="text/css" class="init">
+    table {
+        table-layout: fixed;
+    }
+    /*  .container {
+                margin-left: 10px;
+            }*/
+    .plus-button {
+        background-color: #007BFF;
+        color: white;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 12px;
+        font-size: 20px;
+        cursor: pointer;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+        .plus-button:hover {
+            background-color: #0056b3; /* darker blue */
+            transform: scale(1.05); /* slightly grow */
+        }
+
+
+
+</style>
+
+
+
+<h1>Hello, Doc!</h1>
+
+<div>
+    Welcome to your app.
+</div>
+
+
+
+
+<div>
+    <img src="images/tooth.png" alt="Description of image" style="max-width: 300px; margin-left:200px;" />
+</div>
+
+
+    <button type="button" class="plus-button"  onclick="location.href='clientslist'">
+        <span style="display: inline-flex; ">
+            <span class="bi bi-person" aria-hidden="true"></span>
+            Client List
+        </span>
+    </button>
+
+
+<button type="button" class="plus-button" style="margin-left:20px;" onclick="location.href='calendarmain'">
+        <span style="display: inline-flex; ">
+            <span class="bi bi-calendar" aria-hidden="true"></span>
+            Calendar
+        </span>
+    </button>
+
+
+<button type="button" class="plus-button" style="margin-left:20px;" onclick="location.href='expenselist'">
+        <span style="display: inline-flex; ">
+            <span class="bi bi-currency-dollar" aria-hidden="true"></span>
+            Expenses
+        </span>
+    </button>
+
+
+
+<button type="button" style="margin-left:20px;" class="plus-button"
+        onclick="window.open('https://lrettore.grafana.net/public-dashboards/92af304b29b34db195c47fd426fc84ee', 'StatsWindow', 'width=1100,height=700,resizable=yes,scrollbars=yes')">
+        <span style="display: inline-flex; ">
+            <span class="bi bi-bar-chart" aria-hidden="true"></span>
+            Stats
+        </span>
+    </button>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; }
+    [Inject] private IHttpContextAccessor HttpContextAccessor { get; set; }
+
+    // This code block is used to redirect mobile users to the mobile version of the home page.
+    protected override void OnInitialized()
+    {
+        var userAgent = HttpContextAccessor.HttpContext?.Request.Headers["User-Agent"].ToString();
+        if (!string.IsNullOrEmpty(userAgent) &&
+            (userAgent.Contains("Mobi") || userAgent.Contains("Android") || userAgent.Contains("iPhone")))
+        {
+            Navigation.NavigateTo("/homemobile", true);
+        }
+    }
+}
+
+

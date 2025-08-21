@@ -1,0 +1,584 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Lista de Clientes</title>
+
+    <link href="../DataTables/datatables.css" rel="stylesheet" />
+    <link href="../DataTables/buttons.dataTables.css" rel="stylesheet" />
+    <link href="../DataTables/select.dataTables.css" rel="stylesheet" />
+    <link href="../DataTables/dataTables.dateTime.min.css" rel="stylesheet" />
+    <link href="../DataTables/fixedHeader.dataTables.min.css" rel="stylesheet">
+    <link href="../DataTables/stateRestore.dataTables.min.css" rel="stylesheet">
+    <link href="../app.css" rel="stylesheet" />
+
+    <style type="text/css" class="init">
+        table {
+            table-layout: fixed;
+            width: 100% !important; /* Let DataTables do its own sizing inside container */
+        }
+        /*  .container {
+            margin-left: 10px;
+        }*/
+        .plus-button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+            .plus-button:hover {
+                background-color: #0056b3; /* darker blue */
+                transform: scale(1.05); /* slightly grow */
+            }
+
+        /*  html, body, table, input, select, button {
+            font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            color: #333;
+        }*/
+
+
+    </style>
+
+
+
+    <script src="../DataTables/jquery-3.7.1.min.js"></script>
+    <script src="../DataTables/datatables.js"></script>
+    <script src="../DataTables/dataTables.buttons.js"></script>
+    <script src="../DataTables/buttons.dataTables.js"></script>
+    <script src="../DataTables/dataTables.select.js"></script>
+    <script src="../DataTables/select.dataTables.js"></script>
+    <script src="../DataTables/dataTables.dateTime.min.js"></script>
+    <script src="../DataTables/moment.min.js"></script>
+    <script src="../DataTables/datetime-moment.js"></script>
+    <script src="../DataTables/dataTables.fixedHeader.min.js"></script>
+    <script src="../DataTables/jszip.min.js"></script>
+    <script src="../DataTables/pdfmake.min.js"></script>
+    <script src="../DataTables/vfs_fonts.js"></script>
+    <script src="../DataTables/buttons.html5.min.js"></script>
+    <script src="../DataTables/buttons.print.min.js"></script>
+
+    <script type="text/javascript">
+
+
+        $(document).ready(function () {
+            var table = new DataTable('#mainGrid', {
+                "lengthMenu": [10, 25, 50, 100, { label: 'All', value: -1 }],
+                "pageLength": 10,
+                "fixedHeader": {
+                    footer: true
+                },
+                initComplete: function () {
+
+                    // Set column filter box widths for selected columns
+                    var columnWidths = { 3: 60 };
+                    createColumnFilterDropdowns(table, columnWidths, 1);
+
+                    //Apply default filter
+                    setColumnFilterDropdownValue(table, 3, 'IP');
+
+                    //Row Clicking Event
+                    $('#mainGrid tbody').on('click', 'tr', function () {
+
+                        //Capture row data
+                        const rowdata = table.row(this).data();
+
+                        // Store it globally for the edit/delete button to use.
+                        //eventBeingEdited is a custom property created
+                        window.eventBeingEdited = rowdata;
+                    });
+
+                },
+
+                layout: {
+                    topStart: {
+                        buttons: ['copy', 'csv', 'excel', 'pdf', 'print', 'pageLength']
+                    }
+                },
+
+
+                "ajax": {
+                    url: '/api/clients',
+                    type: "GET",
+                    dataSrc: ''
+                },
+
+                order: [[0, 'asc']],
+                //columnDefs: [
+
+                //    { targets: [2, 10, 11], width: '650px', className: 'dt-center'},
+                //    ],
+                autoWidth: false, // Don't let DataTables recalc widths
+                responsive: true,
+                "columns": [
+                    { "data": 'name', 'width': '150px' },
+                    {
+                        "data": null, 'width': '50px',
+                        "render": function calculateAge(data) {
+                            const today = new Date();
+                            let age = 0;
+                            if (data.dob != null) {
+                                const birthDate = new Date(data.dob);
+                                age = today.getFullYear() - birthDate.getFullYear();
+                                const monthDifference = today.getMonth() - birthDate.getMonth();
+
+                                if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+                                    age--;
+                                }
+                            }
+                            
+                            return age;
+                        }
+                    },
+                    //{ "data": 'dob', 'width': '150px', visible: false },
+                    //{ "data": 'sex', 'width': '60px', visible: false },
+                    { "data": 'phone', 'width': '150px', visible: true },
+                    //{ "data": 'address', 'width': '150px', visible: false },
+                    //{ "data": 'city', 'width': '150px', visible: false },
+                    //{ "data": 'state', 'width': '150px', visible: false },
+                    //{ "data": 'postalCode', 'width': '150px', visible: false },
+                    { "data": 'clientStatus', 'width': '100px', visible: true },
+                    {
+                        "data": null,  'width': '80px',
+                        "render": function (data, type, row, meta) {
+                            if (type === 'display') {
+                                data = '<div><a href="#" onclick="document.getElementById(\'editDeleteModal\').style.display=\'block\'">Modificar</a></div>';
+                            }
+
+                            return data;
+                        }
+                    },
+                    {
+                        "data": null,  'width': '80px',
+                        "render": function (data, type, row, meta) {
+                            if (type === 'display') {
+                                data = '<div><a href="../PagesPT/clientdetail.html?id=' + row.id + '">Detalhes</a></div>';
+                            }
+
+                            return data;
+                        }
+                    }
+                ],
+            });
+
+            // Delete Event
+            document.getElementById('deleteClientBtn').addEventListener('click', function () {
+                if (window.eventBeingEdited) {
+                    //From row clicking
+                    const data = window.eventBeingEdited;
+                    const clientid = data.id;
+
+                    fetch(`/api/clients/${clientid}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ id: clientid })
+                    })
+                        .then(response => {
+                            if (!response.ok) throw new Error('Delete failed');
+
+
+
+                            window.eventBeingEdited = null;
+                            document.getElementById('editDeleteModal').style.display = 'none';
+                            $('#mainGrid').DataTable().ajax.reload();
+
+                            // Show success message
+                            const msg = document.getElementById('successMessageDeleted');
+                            msg.style.display = 'block';
+                            document.getElementById('editmodalMessage').textContent = '';
+
+
+                            // Hide after 3 seconds
+                            setTimeout(() => {
+                                msg.style.display = 'none';
+                            }, 3000);
+
+
+                        })
+                        .catch(error => console.error('Error deleting client:', error));
+                        document.getElementById('editmodalMessage').style.display = 'block'
+                        const msg = 'Erro ao excluir. Cliente tem compromisso na agenda.'
+                        document.getElementById('editmodalMessage').textContent = msg;
+                        document.getElementById('editmodalMessage').style.color = 'red';
+                }
+            });
+
+            // Edit
+            document.getElementById('editClientBtn').addEventListener('click', function () {
+
+                //From row clicking
+                const data = window.eventBeingEdited;
+
+                if (window.eventBeingEdited) {
+                    document.getElementById('clientID').value = data.id;
+                    document.getElementById('clientName').value = data.name;
+                    document.getElementById('clientPhone').value = data.phone;
+                    document.getElementById('clientDOB').value = data.dob;
+                    document.getElementById('clientSex').value = (data.sex || '').trim();
+                    document.getElementById('clientAddress').value = data.address;
+                    document.getElementById('clientCity').value = data.city;
+                    document.getElementById('clientState').value = data.state;
+                    document.getElementById('clientPostalCode').value = data.postalCode;
+
+
+                    document.getElementById('editDeleteModal').style.display = 'none';
+                    document.getElementById('ClientModal').style.display = 'block';
+
+
+                }
+            });
+
+            //Save modifications
+            document.getElementById('saveClientBtn').addEventListener('click', function () {
+
+                const id = document.getElementById('clientID').value;
+                const name = document.getElementById('clientName').value;
+                const phone = document.getElementById('clientPhone').value || null;
+                const dob = document.getElementById('clientDOB').value || null;
+                const sex = document.getElementById('clientSex').value || null;
+                const address = document.getElementById('clientAddress').value || null;
+                const city = document.getElementById('clientCity').value || null;
+                const state = document.getElementById('clientState').value || null;
+                const postalcode = document.getElementById('clientPostalCode').value || null;
+                const clientStatus = 'CC';
+
+                if (!name) {
+                    const msg = `Nome precisa ser preenchido`;
+                    document.getElementById('modalMessage').textContent = msg;
+                    document.getElementById('modalMessage').style.color = 'red';
+                    return;
+                }
+
+
+                if (window.eventBeingEdited) {
+                    // UPDATE existing event
+                    const event = window.eventBeingEdited;
+
+                    const updatedClient = {
+                        id: id,
+                        Name: name,
+                        Phone: phone,
+                        DOB: dob,
+                        Sex: sex,
+                        Address: address,
+                        City: city,
+                        State: state,
+                        PostalCode: postalcode
+                    };
+
+                    fetch(`/api/clients`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updatedClient)
+                    })
+                        .then(response => {
+                            if (!response.ok) throw new Error("Update failed");
+
+                            window.eventBeingEdited = null;
+                            document.getElementById('ClientModal').style.display = 'none';
+                            document.getElementById('modalMessage').textContent = '';
+                            // Show success message
+                            const msg = document.getElementById('successMessageSaved');
+                            msg.style.display = 'block';
+
+                            // Hide after 3 seconds
+                            setTimeout(() => {
+                                msg.style.display = 'none';
+                            }, 3000);
+
+                            $('#mainGrid').DataTable().ajax.reload();
+                            table.draw();
+                        })
+                        .catch(error => console.error('Error updating event:', error));
+                }
+                else {
+                    // ADD new client
+                    const newClient = {
+                        //id: id,
+                        Name: name,
+                        Phone: phone,
+                        DOB: dob,
+                        Sex: sex,
+                        Address: address,
+                        City: city,
+                        State: state,
+                        PostalCode: postalcode,
+                        ClientStatus : clientStatus
+                    };
+
+                    fetch('/api/clients', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(newClient)
+                    })
+                        .then(async response => {
+                            const text = await response.text();  // 
+                            if (!response.ok) {
+                                throw new Error(text.trim());    //
+                            }
+                            return JSON.parse(text);
+                        })
+                        .then(data => {
+                            // Close modal
+                            document.getElementById('ClientModal').style.display = 'none';
+
+                            // Reload table
+                            $('#mainGrid').DataTable().ajax.reload();
+                            table.draw();
+
+                            // Reset form inputs
+                            document.getElementById('clientID').value = '';
+                            document.getElementById('clientName').value = '';
+                            document.getElementById('clientPhone').value = '';
+                            document.getElementById('clientDOB').value = '';
+                            document.getElementById('clientSex').value = '';
+                            document.getElementById('clientAddress').value = '';
+                            document.getElementById('clientCity').value = '';
+                            document.getElementById('clientState').value = '';
+                            document.getElementById('clientPostalCode').value = '';
+
+                            // Show success message
+                            const msg = document.getElementById('successMessageSaved');
+                            msg.style.display = 'block';
+
+                            // Hide after 3 seconds
+                            setTimeout(() => {
+                                msg.style.display = 'none';
+                            }, 3000);
+                        })
+                        .catch(error => {
+                            console.error('Error saving event:', error);
+                            document.getElementById('modalMessage').textContent = error.message;
+                            document.getElementById('modalMessage').style.color = 'red';
+                        });
+                }  //
+
+            });  // closing save
+
+
+        });
+
+        //Create Column Drop Filters Function
+        function createColumnFilterDropdowns(table, columnWidths, row) {
+            table.columns(Object.keys(columnWidths))
+                .every(function () {
+                    var column = this;
+                    var index = column.index();
+                    var width = columnWidths[index] || 60;
+
+                    // Create select element and listener
+                    var select = $('<select class="column_search" id="col'
+                        + index + '"><option value=""></option></select>')
+                        .css('width', width) // Apply specified width
+                        .appendTo($("#mainGrid thead tr:eq(" + row + ") th")
+                            .eq(index).empty()) // Add to row of the table header
+                        .on('change', function () {
+                            column
+                                .search($(this).val(), { exact: true })
+                                .draw();
+                        });
+
+                    // Populate the select with unique column values
+                    column
+                        .data()
+                        .unique()
+                        .sort()
+                        .each(function (d) {
+                            select.append('<option value="' + d + '">'
+                                + d + '</option>');
+                        });
+                });
+        }
+
+        function setColumnFilterDropdownValue(table, columnIndex, value) {
+            table.column(columnIndex).data().unique().sort().each(function (d) {
+                if (d == value) { // Check if value exists in the dropdown menu
+                    $("#col" + columnIndex).val(value).change();
+                }
+            });
+        }
+
+  
+
+    </script>
+
+</head>
+<body>
+    <h1>Lista de Clientes</h1>
+
+    <div style="display: flex; flex-direction: row; min-width: max-content; margin-bottom:50px">
+        <div class="container" ">
+            <button class="plus-button" onclick="window.eventBeingEdited = null;
+            document.getElementById('ClientModal').style.display = 'block';
+            document.getElementById('modalMessage').textContent = '';
+                // Reset form inputs
+            document.getElementById('clientID').value = '';
+            document.getElementById('clientName').value = '';
+            document.getElementById('clientPhone').value = '';
+            document.getElementById('clientDOB').value = '';
+            document.getElementById('clientSex').value = '';
+            document.getElementById('clientAddress').value = '';
+            document.getElementById('clientCity').value = '';
+            document.getElementById('clientState').value = '';
+            document.getElementById('clientPostalCode').value = ''">
+                + Adicionar Clientes
+            </button>
+        </div>
+
+        <div class="container" style="margin-left: 200px;">
+            <button class="plus-button" onclick="window.location.href='../PagesPT/historyall.html'">
+                Historico de Consultas
+            </button>
+        </div>
+    </div>
+
+    <div id="successMessageSaved" style="
+         display: none;
+         background-color: #d4edda;
+         color: #155724;
+         padding: 10px 20px;
+         border-radius: 6px;
+         margin-top: 10px;
+         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+         font-weight: bold;
+         ">
+            Cliente salvo com sucesso!
+    </div>
+
+    <div id="successMessageDeleted" style="
+      display: none;
+      background-color: #d4edda;
+      color: #155724;
+      padding: 10px 20px;
+      border-radius: 6px;
+      margin-top: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      font-weight: bold;
+      ">
+        Client excluido com sucesso!
+    </div>
+
+
+    <div class="container" style="margin-top: 20px;">
+        <!--Grid declaration-->
+        <table id="mainGrid" class="display">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Idade</th>
+                    <!--<th>DoB</th>
+                    <th>Sex</th>-->
+                    <th>Fone</th>
+                    <!--<th>Address</th>
+                    <th>City</th>
+                    <th>State</th>
+                    <th>Postal Code</th>-->
+                    <th>Status</th>
+                    <th></th>
+                    <th></th>
+                </tr>
+                <tr>
+
+                    <th></th>
+                    <th></th>
+                    <!--<th></th>-->
+                    <!--<th></th>-->
+                    <th></th>
+                    <!--<th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>-->
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tfoot>
+                <tr>
+                    <th>Nome</th>
+                    <th>Idade</th>
+                    <!--<th>DoB</th>
+                    <th>Sex</th>-->
+                    <th>Fone</th>
+                    <!--<th>Address</th>
+                     <th>City</th>
+                    <th>State</th>
+                    <th>Postal Code</th>-->
+                    <th>Status</th>
+                    <th></th>
+                    <th></th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Edit/Delete Modal -->
+    <div id="editDeleteModal" style="display:none; position:fixed; top:20%; left:50%; transform:translate(-50%, -20%); background:#fff; border:1px solid #ccc; padding:20px; box-shadow:0 2px 10px rgba(0,0,0,0.2); z-index:1000;">
+        <h3>Editar Cliente</h3>
+        <!--<p id="selectedEventTitle" style="font-weight:bold;"></p>-->
+        <button id="editClientBtn" onclick="document.getElementById('editmodalMessage').style.display = 'none'">Editar</button>
+        <button id="deleteClientBtn">Excluir</button>
+        <button onclick="document.getElementById('editDeleteModal').style.display = 'none';
+                        document.getElementById('editmodalMessage').style.display = 'none'">
+            Cancelar
+        </button>
+        <p id="editmodalMessage" style="font-weight: bold;"></p>
+    </div>
+
+    <!-- Modal -->
+    <div id="ClientModal" style="display:none; position:fixed; top:1%; left:50%; transform:translate(-50%, -1%);
+    background:#fff; border:1px solid #ccc; padding:20px; box-shadow:0 2px 10px rgba(0,0,0,0.2); z-index:1000;
+    width: 80vw; max-width: 300px;">
+        <h3>Info Cliente</h3>
+        <label>Nome:</label><br>
+        <input type="text" id="clientName" style="width:100%;" /><br><br>
+
+        <label>Fone:</label><br>
+        <input type="text" id="clientPhone" style="width:50%;" /><br><br>
+
+        <label>Data Nasc:</label><br>
+        <input type="date" id="clientDOB" style="width:50%;"><br><br>
+
+        <label>Sexo:</label><br>
+        <select id="clientSex" style="width:60%;">
+            <option value="">-- Selecione o Sexo --</option>
+            <option value="M">H</option>
+            <option value="F">M</option>
+        </select><br><br>
+
+        <label>Endereco:</label><br>
+        <input type="text" id="clientAddress" style="width:90%;"><br><br>
+
+        <label>Cidade:</label><br>
+        <input type="text" id="clientCity" style="width:60%;"><br><br>
+
+        <label>Estado:</label><br>
+        <input type="text" id="clientState" style="width:20%;"><br><br>
+
+        <label>CEP:</label><br>
+        <input type="text" id="clientPostalCode" style="width:50%;"><br><br>
+
+        <input type="hidden" id="clientID" style="width:100%;" /><br><br>
+
+
+        <p id="modalMessage" style="font-weight: bold;"></p>
+
+        <button id="saveClientBtn">Save</button>
+        <button onclick="document.getElementById('ClientModal').style.display = 'none'">Cancelar</button>
+    </div>
+
+
+</body>
+</html>

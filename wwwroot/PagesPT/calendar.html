@@ -1,0 +1,336 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Calendario</title>
+    <!--<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />-->
+    <script src="../Calendar/index.global.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+
+        #calendar {
+            max-width: 900px;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Calendario</h1>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var calendarEl = document.getElementById('calendar');
+
+            //document.getElementById('monthPicker').addEventListener('change', function () {
+            //    const selected = this.value; // e.g., "2025-08"
+            //    if (selected) {
+            //        calendar.gotoDate(selected + '-01'); // Go to the first day of selected month
+            //    }
+            //});
+
+            document.getElementById('dayPicker').addEventListener('change', function () {
+                const selectedDate = this.value; // Format: YYYY-MM-DD
+                if (selectedDate) {
+                    calendar.gotoDate(selectedDate);
+                }
+            });
+
+            //Name drop menu populate - EditModal
+            fetch('/api/clients/names')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('clientNames');
+                    data.forEach(client => {
+                        const option = document.createElement('option');
+                        option.value = client.id;
+                        option.textContent = client.name;
+                        select.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error loading clients:', error));
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                editable: true,
+                selectable: true,
+                eventTimeFormat: { // 24-hour format
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                },
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+
+
+                },
+                dateClick: function (info) {
+                    // Reset form
+                    document.getElementById('eventTitle').value = '';
+                    document.getElementById('eventTime').value = '';
+                    document.getElementById('eventNotes').value = '';
+                    document.getElementById('clientNames').value = '';
+                    document.getElementById('eventDate').value = info.dateStr;
+                    window.eventBeingEdited = null;
+
+
+
+                    document.getElementById('eventModal').style.display = 'block';
+                },
+                eventClick: function (info) {
+                    // Store clicked event
+                    window.eventBeingEdited = info.event;
+
+                    document.getElementById('selectedEventTitle').textContent = info.event.title;
+                    document.getElementById('editDeleteModal').style.display = 'block';
+                },
+
+                events: function (fetchInfo, successCallback, failureCallback) {
+                    fetch('/api/calendar')
+                        .then(response => response.json())
+                        .then(data => {
+                            const formattedEvents = data.map(evt => ({
+                                id: evt.id,
+                                title: evt.title,
+                                start: evt.dateTime,
+                                allDay: false,
+                                extendedProps: {
+                                    notes: evt.notes,
+                                    clientID: evt.clientID,
+                                    clientName: evt.client?.name || ''
+                                }
+                            }));
+                            successCallback(formattedEvents);
+                        })
+                        .catch(error => {
+                            console.error('Error loading events:', error);
+                            failureCallback(error);
+                        });
+                },
+            });
+
+            calendar.render();
+
+            //// Month picker logic
+            //document.getElementById('monthPicker').addEventListener('change', function () {
+            //    const selected = this.value; // e.g., "2025-08"
+            //    if (selected) {
+            //        calendar.gotoDate(selected + '-01');
+            //    }
+            //});
+
+            // Delete Event
+            document.getElementById('deleteEventBtn').addEventListener('click', function () {
+                if (window.eventBeingEdited) {
+                    const eventId = window.eventBeingEdited.id; // store before nulling
+
+                    fetch(`/api/calendar/${eventId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ id: eventId })
+                    })
+                        .then(response => {
+                            if (!response.ok) throw new Error('Delete failed');
+
+                            // Remove from calendar UI
+                            window.eventBeingEdited.remove();
+                            window.eventBeingEdited = null;
+                            document.getElementById('editDeleteModal').style.display = 'none';
+                        })
+                        .catch(error => console.error('Error deleting event:', error));
+                }
+            });
+
+            // Edit Event
+            document.getElementById('editEventBtn').addEventListener('click', function () {
+                if (window.eventBeingEdited) {
+                    const event = window.eventBeingEdited;
+                    document.getElementById('eventTitle').value = event.title;
+                    document.getElementById('eventDate').value = event.start.toISOString().split('T')[0];
+                    document.getElementById('eventTime').value = event.start.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                    document.getElementById('eventNotes').value = event.extendedProps.notes || '';
+                    document.getElementById('clientNames').value = event.extendedProps.clientID || '';
+
+                    document.getElementById('editDeleteModal').style.display = 'none';
+                    document.getElementById('eventModal').style.display = 'block';
+                }
+            });
+
+            //Save modifications
+            document.getElementById('saveEventBtn').addEventListener('click', function () {
+                //const title = document.getElementById('eventTitle').value;
+                const time = document.getElementById('eventTime').value;
+                const date = document.getElementById('eventDate').value;
+                const notes = document.getElementById('eventNotes').value;
+                const name = document.getElementById('clientNames').options[
+                    document.getElementById('clientNames').selectedIndex
+                ].text;
+                const clientID = document.getElementById('clientNames').value;
+                const title = name;
+                const paid = 'No';
+                const status = 'IP';
+
+                if (!time || !clientID) {
+                    alert('Hora e cliente requeridos');
+                    return;
+                }
+
+                const startDateTime = `${date}T${time}`;
+
+                if (window.eventBeingEdited) {
+                    // UPDATE existing event
+                    const event = window.eventBeingEdited;
+                    const eventId = window.eventBeingEdited.id;
+
+
+                    const updatedEvent = {
+                        id: eventId,
+                        Title: title,
+                        DateTime: startDateTime,
+                        Notes: notes,
+                        //Amount: 0,
+                        //Paid: false,
+                        //Received: 0,
+                        ClientID: parseInt(clientID) || null  // Ensure it's an int, or null if not selected
+                    };
+
+                    fetch(`/api/calendar`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updatedEvent)
+                    })
+                        .then(response => {
+                            if (!response.ok) throw new Error("Update failed");
+
+                            // Update calendar event visually
+                            event.setProp('title', title);
+                            event.setStart(startDateTime);
+                            event.setExtendedProp('notes', notes);
+                            event.setExtendedProp('clientID', clientID);
+
+                            window.eventBeingEdited = null;
+                            document.getElementById('eventModal').style.display = 'none';
+                        })
+                        .catch(error => console.error('Error updating event:', error));
+                }
+                else {
+                    // ADD new event
+                    const newEvent = {
+                        Title: title,
+                        DateTime: startDateTime,
+                        Notes: notes,
+                        Amount: 0,
+                        Paid: paid,
+                        Client: {
+                         //   id: parseInt(clientID),
+                            ClientStatus: status
+                        },
+                        Received: 0,
+                        ClientID: parseInt(clientID) || null  // Ensure it's an int, or null if not selected
+                    };
+
+                    fetch('/api/calendar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(newEvent)
+                    })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(saved => {
+                            calendar.addEvent({
+
+                                title: saved.title,
+                                start: saved.dateTime,
+                                allDay: false,
+                                extendedProps: {
+                                    notes: saved.notes
+                                    // name: saved.clientID // or fetch the client name separately if desired
+                                }
+                            });
+
+                            document.getElementById('eventModal').style.display = 'none';
+
+                            // Reset form inputs
+                            document.getElementById('eventTitle').value = '';
+                            document.getElementById('eventTime').value = '';
+                            document.getElementById('eventNotes').value = '';
+                            document.getElementById('clientNames').value = '';
+                            window.location.href = '../PagesPT/calendar.html';
+                        })
+                        .catch(error => {
+                            console.error('Error saving event:', error);
+                            alert('Failed to save event, please try again.');
+                        });
+                }  //
+
+            });  // closing save
+
+        });
+    </script>
+
+    <div style="text-align:center; margin-bottom:20px;">
+        <!--<label for="monthPicker"><strong>Go to Month:</strong></label>
+        <input type="month" id="monthPicker">-->
+
+
+        <label for="dayPicker"><strong>Selecione a Data:</strong></label>
+        <input type="date" id="dayPicker">
+
+    </div>
+
+    <!-- Calendar container -->
+    <div id="calendar"></div>
+
+    <!-- Edit/Delete Modal -->
+    <div id="editDeleteModal" style="display:none; position:fixed; top:35%; left:50%; transform:translate(-50%, -35%); background:#fff; border:1px solid #ccc; padding:20px; box-shadow:0 2px 10px rgba(0,0,0,0.2); z-index:1000;">
+        <h3>Detalhes:</h3>
+        <p id="selectedEventTitle" style="font-weight:bold;"></p>
+        <button id="editEventBtn">Editar</button>
+        <button id="deleteEventBtn">Excluir</button>
+        <button onclick="document.getElementById('editDeleteModal').style.display='none'">Cancelar</button>
+    </div>
+
+    <!-- Modal -->
+    <div id="eventModal" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -30%); background:#fff; border:1px solid #ccc; padding:20px; box-shadow:0 2px 10px rgba(0,0,0,0.2); z-index:1000;">
+        <h3>Adicionar Consulta</h3>
+        <label style="display: none;">Titulo:</label><br>
+        <input type="text" id="eventTitle" disabled style="width: 100%; display: none;"/>
+
+        <label>Hora:</label><br>
+        <input type="time" id="eventTime" /><br><br>
+
+        <label>Notas:</label><br>
+        <textarea id="eventNotes" style="width:100%;" rows="4"></textarea><br><br>
+
+        <label>Nome:</label><br>
+        <select id="clientNames" style="width:100%;">
+            <option value="">-- Selecione o Nome --</option>
+        </select><br><br>
+
+        <input type="hidden" id="eventDate" />
+
+        <button id="saveEventBtn">Salvar</button>
+        <button onclick="document.getElementById('eventModal').style.display='none'">Cancelar</button>
+    </div>
+
+</body>
+</html>

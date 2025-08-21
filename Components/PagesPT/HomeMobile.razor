@@ -1,0 +1,69 @@
+﻿@page "/homemobilePT"
+
+<PageTitle>Home</PageTitle>
+
+<style type="text/css" class="init">
+    table {
+        table-layout: fixed;
+    }
+    /*  .container {
+                    margin-left: 10px;
+                }*/
+    .plus-button {
+        background-color: #007BFF;
+        color: white;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 12px;
+        font-size: 20px;
+        cursor: pointer;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+        .plus-button:hover {
+            background-color: #0056b3; /* darker blue */
+            transform: scale(1.05); /* slightly grow */
+        }
+
+</style>
+
+
+
+
+<h1>Bem Vindo Dr!</h1>
+
+
+<div>
+    <img src="images/tooth.png" alt="Description of image" style="max-width: 300px; margin-left:50px;" />
+</div>
+
+
+<button type="button" class="plus-button" onclick="location.href='clientslistPT'">
+        <span class="bi bi-person" aria-hidden="true"></span>
+        Lista Clientes
+</button>
+
+
+<button type="button" class="plus-button" style="margin-top:20px;" onclick="location.href='calendarmainPT'">
+        <span class="bi bi-calendar" aria-hidden="true"></span>
+        Calendario
+</button>
+
+
+<button type="button" class="plus-button" style="margin-top:20px;" onclick="location.href='expenselistPT'">
+        <span class="bi bi-currency-dollar" aria-hidden="true"></span>
+        Despesas
+</button>
+
+
+
+<button type="button" style="margin-top:20px;" class="plus-button"
+        onclick="window.open('https://lrettore.grafana.net/public-dashboards/92af304b29b34db195c47fd426fc84ee', 'StatsWindow', 'width=1100,height=700,resizable=yes,scrollbars=yes')">
+        <span class="bi bi-bar-chart" aria-hidden="true"></span>
+        Estatisticas
+</button>
+
+
+
+

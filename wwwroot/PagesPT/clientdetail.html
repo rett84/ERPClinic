@@ -1,0 +1,1017 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Detalhes Clientes</title>
+
+    <link href="../DataTables/datatables.css" rel="stylesheet" />
+    <link href="../DataTables/buttons.dataTables.css" rel="stylesheet" />
+    <link href="../DataTables/select.dataTables.css" rel="stylesheet" />
+    <link href="../DataTables/dataTables.dateTime.min.css" rel="stylesheet" />
+    <link href="../DataTables/fixedHeader.dataTables.min.css" rel="stylesheet">
+    <link href="../DataTables/stateRestore.dataTables.min.css" rel="stylesheet">
+    <link href="../app.css" rel="stylesheet" />
+
+    <style type="text/css" class="init">
+
+        table {
+            table-layout: fixed;
+        }
+
+        .semi-transparent-box {
+            background-color: rgba(0, 0, 0, 0.1); /* Semi-transparent black background */
+            border-radius: 15px; /* Rounded corners with a 15px radius */
+            padding: 20px; /* Padding around the text */
+            color: grey; /* Text color for readability against the dark background */
+            max-width: 400px; /* Optional: Limit the width of the box */
+            margin: 0px; /*  */
+        }
+
+        .plus-button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+            .plus-button:hover {
+                background-color: #0056b3; /* darker blue */
+                transform: scale(1.05); /* slightly grow */
+            }
+
+        @media print {
+            /* Hide elements you don’t want to print */
+            button, nav, .no-print {
+                display: none;
+            }
+
+            /* Adjust layout for print */
+            body {
+                margin: 1in; /* add margin for print */
+                font-size: 12pt;
+                color: black;
+                background: white;
+            }
+
+            #container {
+                display: none !important;
+            }
+
+            .dt-search {
+                display: none !important;
+            }
+
+            .dt-buttons {
+                display: none !important;
+            }
+
+            .dt-info {
+                display: none !important;
+            }
+        }
+    </style>
+
+
+
+    <script src="../DataTables/jquery-3.7.1.min.js"></script>
+    <script src="../DataTables/datatables.js"></script>
+    <script src="../DataTables/dataTables.buttons.js"></script>
+    <script src="../DataTables/buttons.dataTables.js"></script>
+    <script src="../DataTables/dataTables.select.js"></script>
+    <script src="../DataTables/select.dataTables.js"></script>
+    <script src="../DataTables/dataTables.dateTime.min.js"></script>
+    <script src="../DataTables/moment.min.js"></script>
+    <script src="../DataTables/datetime-moment.js"></script>
+    <script src="../DataTables/dataTables.fixedHeader.min.js"></script>
+    <script src="../DataTables/jszip.min.js"></script>
+    <script src="../DataTables/pdfmake.min.js"></script>
+    <script src="../DataTables/vfs_fonts.js"></script>
+    <script src="../DataTables/buttons.html5.min.js"></script>
+    <script src="../DataTables/buttons.print.min.js"></script>
+    <script src="../Fabric/fabric.min.js"></script>
+
+
+
+
+    <script type="text/javascript">
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const clientId = urlParams.get('id');
+
+        $(document).ready(function () {
+
+            //Get Client Details
+            fetch('/api/clients/names')
+                .then(response => response.json())
+                .then(data => {
+                    const labelName = document.getElementById('clientName');
+                    const labelAge = document.getElementById('clientAge');
+                    const labelPhone = document.getElementById('clientPhone');
+                    const dropstatus = document.getElementById('clientStatusdrop')
+                    const clientID = document.getElementById('clientID')
+
+                    data.forEach(client => {
+
+                        if (client.id == clientId) {
+
+                            function calculateAge(data) {
+                                const today = new Date();
+                                let age = 0;
+                                if (data.dob != null) {
+                                    const birthDate = new Date(data.dob);
+                                    age = today.getFullYear() - birthDate.getFullYear();
+                                    const monthDifference = today.getMonth() - birthDate.getMonth();
+
+                                    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+                                        age--;
+                                    }
+                                }
+
+                                return age;
+                            }
+
+                            labelName.textContent = 'Cliente: ' + client.name;
+                            labelAge.textContent = 'Idade: ' + calculateAge(client);
+                            labelPhone.textContent = 'Fone: ' + client.phone;
+                            dropstatus.value = client.clientStatus || '';
+                            clientID.textContent = client.id;
+                        }
+                    });
+                })
+                .catch(error => console.error('Error loading client:', error));
+
+
+            //Save client Status
+            $('#saveStatusbtn').on('click', () => {
+                const status = document.getElementById('clientStatusdrop').value || null;
+                const clientID = document.getElementById('clientID').textContent;
+
+                const updatedClient = {
+                    id: clientID,
+                    clientStatus: status
+                };
+
+                fetch(`/api/appointments/clientStatus`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedClient)
+                })
+                    .then(response => {
+                        if (!response.ok) throw new Error("Update failed");
+
+
+                        // Show success message
+                        const msg = document.getElementById('successStatusSaved');
+                        msg.style.display = 'block';
+
+                        // Hide after 3 seconds
+                        setTimeout(() => {
+                            msg.style.display = 'none';
+                        }, 3000);
+
+
+                    })
+                    .catch(error => console.error('Error updating event:', error));
+            });
+
+
+            var table = new DataTable('#mainGrid', {
+                "lengthMenu": [10, 25, 50, 100, { label: 'All', value: -1 }],
+                "pageLength": 10,
+                "fixedHeader": {
+                    footer: true
+                },
+
+                initComplete: function () {
+
+                    // Set column filter box widths for selected columns
+                    var columnWidths = { 3: 60 };
+                    createColumnFilterDropdowns(table, columnWidths, 1);
+
+
+                    var minDate, maxDate;
+
+                    //Custom filtering function which will search data
+                    //in column 0 between two values - 0 index columns
+                    DataTable.ext.search.push(function (settings, data, dataIndex) {
+                        var min = minDate.val();
+                        var max = maxDate.val();
+                        var date = new Date(data[0]); //Date column date search
+
+                        if (
+                            (min === null && max === null) ||
+                            (min === null && date <= max) ||
+                            (min <= date && max === null) ||
+                            (min <= date && date <= max)
+                        ) {
+                            return true;
+                        }
+                        return false;
+                    });
+
+                    //Create date inputs
+                    minDate = new DateTime('#txtdatestart', {
+                        format: 'MMMM Do YYYY'
+                    });
+                    maxDate = new DateTime('#txtdateend', {
+                        format: 'MMMM Do YYYY'
+                    });
+
+
+                    //Refilter the table
+                    $('#txtdatestart, #txtdateend').on('change', function () {
+                        if ($("#txtdatestart").val() == "") {
+
+                            minDate.val(null);
+                        }
+                        if ($("#txtdateend").val() == "") {
+
+                            maxDate.val(null);
+
+                        }
+                        //Search and draw
+                        table.search()
+                        table.draw();
+                    });
+
+                    //Clear filters
+                    $('#clearDates').on('click', () => {
+                        // Clear date input values
+                        $("#txtdatestart, #txtdateend").val("");
+                        //Set those null as well
+                        minDate.val(null)
+                        maxDate.val(null)
+                        table.draw();
+                    });
+
+                    //Row Clicking Event
+                    $('#mainGrid tbody').on('click', 'tr', function () {
+
+                        //Capture row data
+                        const rowdata = table.row(this).data();
+
+                        // Store it globally for the edit/delete button to use.
+                        //eventBeingEdited is a custom property created
+                        window.eventBeingEdited = rowdata;
+                    });
+
+                },
+
+                layout: {
+                    topStart: {
+                        //buttons: ['copy', 'csv', 'excel', 'pdf', 'pageLength']
+                        buttons: [
+                            { extend: "copy", className: "buttonsToHide" },
+                            { extend: "excel", className: "buttonsToHide" },
+                            { extend: "pdf", className: "buttonsToHide" },
+                            { extend: "pageLength", className: "buttonsToHide" }
+                        ],
+                    }
+                },
+
+
+                "ajax": {
+                    url: `/api/appointments/${clientId}`,
+                    type: "GET",
+                    dataSrc: ''
+                },
+
+                order: [[1, 'desc']],
+
+                "columns": [
+                    //  { "data": 'id', visible: false },
+                    {
+                        "data": 'dateTime', 'width': '150px',
+                        render: function (data, type, row, meta) {
+                            if (type === 'sort' || type === 'type') {
+                                return data; // Return original data for sorting and type
+                            }
+                            // Parse the UTC date, convert to local, and format
+                            return moment(data).local().format('DD-MM-YYYY HH:mm:ss');
+                        }
+                    },
+                    { "data": 'details', 'width': '200px' },
+                    {
+                        "data": 'amount', 'width': '100px',
+                        render: DataTable.render.number(null, null, 2, '$')
+                    },
+                    {
+                        "data": 'paid', 'width': '150px',
+                        "render": function (data, type, row, meta) {
+                            if (data == 'Yes') {
+                                data = 'Sim';
+                                return data;
+                            }
+                            data = 'Nao';
+                            return data;
+                        }
+                    },
+                    {
+                        "data": 'received', 'width': '100px',
+                        render: DataTable.render.number(null, null, 2, '$')
+                    },
+                    { "data": 'notes', 'width': '200px' },
+                    {
+                        "data": null,
+                        "render": function (data, type, row, meta) {
+                            if (type === 'display') {
+                                data = '<a href="#" onclick="document.getElementById(\'editDeleteModal\').style.display=\'block\'">Modificar</a>';
+                            }
+
+                            return data;
+                        }
+                    }
+                ],
+            });
+
+            // Delete Event
+            document.getElementById('deleteAppointmentBtn').addEventListener('click', function () {
+                if (window.eventBeingEdited) {
+                    //From row clicking
+                    const data = window.eventBeingEdited;
+                    const appointmentid = data.id;
+
+                    fetch(`/api/appointments/${clientId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ id: appointmentid })
+                    })
+                        .then(response => {
+                            if (!response.ok) throw new Error('Delete failed');
+
+
+
+                            window.eventBeingEdited = null;
+                            document.getElementById('editDeleteModal').style.display = 'none';
+                            $('#mainGrid').DataTable().ajax.reload();
+                            table.draw();
+
+                            // Show success message
+                            const msg = document.getElementById('successMessageDeleted');
+                            msg.style.display = 'block';
+
+                            // Hide after 3 seconds
+                            setTimeout(() => {
+                                msg.style.display = 'none';
+                            }, 3000);
+
+
+                        })
+                        .catch(error => console.error('Error deleting client:', error));
+                }
+            });
+
+            // Edit
+            document.getElementById('editAppointmentBtn').addEventListener('click', function () {
+
+                //From row clicking
+                const data = window.eventBeingEdited;
+
+                function convertfromUTC(data) {
+
+                    // Parse the UTC date, convert to local, and format
+                    return moment.utc(data).local().format('YYYY-MM-DD hh:mm:ss A');
+                }
+
+
+                if (window.eventBeingEdited) {
+                    document.getElementById('appointmentID').value = data.id;
+                    document.getElementById('appointmentDate').value = convertfromUTC(data.dateTime);
+                    document.getElementById('appointmentAmount').value = data.amount ?? 0;
+                    document.getElementById('appointmentPaid').value = data.paid || 'No';
+                    document.getElementById('appointmentReceived').value = data.received ?? 0;
+                    document.getElementById('appointmentDetails').value = data.details || '';
+                    document.getElementById('appointmentNotes').value = data.notes || '';
+
+
+
+                    document.getElementById('editDeleteModal').style.display = 'none';
+                    document.getElementById('AppointmentModal').style.display = 'block';
+
+
+                }
+            });
+
+            //Save modifications
+            document.getElementById('saveAppointmentBtn').addEventListener('click', function () {
+
+                const id = document.getElementById('appointmentID').value;
+                const amount = document.getElementById('appointmentAmount').value || 0;
+                const received = document.getElementById('appointmentReceived').value || 0;
+                const details = document.getElementById('appointmentDetails').value || null;
+                const notes = document.getElementById('appointmentNotes').value || null;
+
+                const paid = document.getElementById('appointmentPaid').value || 'No';
+
+
+
+
+                if (window.eventBeingEdited) {
+                    // UPDATE existing appointment
+                    const event = window.eventBeingEdited;
+
+                    const updatedAppointment = {
+                        id: id,
+                        Amount: amount,
+                        Paid: paid,
+                        Received: received,
+                        Details: details,
+                        Notes: notes,
+                    };
+
+                    fetch(`/api/appointments`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updatedAppointment)
+                    })
+                        .then(response => {
+                            if (!response.ok) throw new Error("Update failed");
+
+                            window.eventBeingEdited = null;
+                            document.getElementById('AppointmentModal').style.display = 'none';
+                            document.getElementById('modalMessage').textContent = '';
+
+                            // Show success message
+                            const msg = document.getElementById('successMessageSaved');
+                            msg.style.display = 'block';
+
+                            // Hide after 3 seconds
+                            setTimeout(() => {
+                                msg.style.display = 'none';
+                            }, 3000);
+
+                            $('#mainGrid').DataTable().ajax.reload();
+                            table.draw();
+                        })
+                        .catch(error => console.error('Error updating event:', error));
+                }
+                else {
+                    // ADD new appointment
+                    const newClient = {
+                        //id: id,
+                        id: id,
+                        Amount: amount,
+                        Paid: paid,
+                        Received: received,
+                        Details: details,
+                        Notes: notes,
+                    };
+
+                    fetch('/api/appointments', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(newClient)
+                    })
+                        .then(async response => {
+                            const text = await response.text();  //
+                            if (!response.ok) {
+                                throw new Error(text.trim());    //
+                            }
+                            return JSON.parse(text);
+                        })
+                        .then(data => {
+                            // Close modal
+                            document.getElementById('ClientModal').style.display = 'none';
+
+                            // Reload table
+                            $('#mainGrid').DataTable().ajax.reload();
+                            table.draw();
+
+                            // Reset form inputs
+                            document.getElementById('appointmentID').value = '';
+                            document.getElementById('appointmentDate').value = '';
+                            document.getElementById('appointmentAmount').value = '';
+                            document.getElementById('appointmentPaid').value = '';
+                            document.getElementById('appointmentReceived').value = '';
+                            document.getElementById('appointmentDetails').value = '';
+                            document.getElementById('appointmentNotes').value = '';
+
+                            // Show success message
+                            const msg = document.getElementById('successMessageSaved');
+                            msg.style.display = 'block';
+
+                            // Hide after 3 seconds
+                            setTimeout(() => {
+                                msg.style.display = 'none';
+                            }, 3000);
+                        })
+                        .catch(error => {
+                            console.error('Error saving event:', error);
+                            document.getElementById('modalMessage').textContent = error.message;
+                            document.getElementById('modalMessage').style.color = 'red';
+                        });
+                }  //
+
+            });  // closing save
+
+
+        });
+
+        //Create Column Drop Filters Function
+        function createColumnFilterDropdowns(table, columnWidths, row) {
+            table.columns(Object.keys(columnWidths))
+                .every(function () {
+                    var column = this;
+                    var index = column.index();
+                    var width = columnWidths[index] || 60;
+
+                    // Create select element and listener
+                    var select = $('<select class="column_search" id="col'
+                        + index + '"><option value=""></option></select>')
+                        .css('width', width) // Apply specified width
+                        .appendTo($("#mainGrid thead tr:eq(" + row + ") th")
+                            .eq(index).empty()) // Add to row of the table header
+                        .on('change', function () {
+                            column
+                                .search($(this).val(), { exact: true })
+                                .draw();
+                        });
+
+                    // Populate the select with unique column values
+                    column
+                        .data()
+                        .unique()
+                        .sort()
+                        .each(function (d) {
+                            select.append('<option value="' + d + '">'
+                                + d + '</option>');
+                        });
+                });
+        }
+
+
+    </script>
+
+</head>
+
+<body>
+
+    <div style="display: flex; flex-direction: row; align-items: center; gap: 10px;">
+        <h1>Detalhes do Cliente</h1>
+
+        <button id="btnListaclientes" class="no-print, plus-button" style="margin-left:500px" onclick="window.location.href='../PagesPT/clients.html';">
+            Lista de Clientes
+        </button>
+    </div>
+
+
+    <div class="semi-transparent-box" style="flex-direction: row;">
+        <!-- Client Info -->
+        <h3 id="clientName" style="width:100%; color:black;"></h3>
+        <h3 id="clientAge" style="width: 100%; color: black;"></h3>
+        <h3 id="clientPhone" style="width: 100%; color: black;"></h3>
+
+
+        <!-- Status Dropdown + Button -->
+        <div style="margin: 20px 0; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+
+            <!-- Label -->
+            <div style="display: flex; flex-direction: column; min-width: max-content; color: black;">
+                <label for="clientStatusdrop"><strong>Status:</strong></label>
+            </div>
+
+            <!-- Dropdown -->
+            <div>
+                <select id="clientStatusdrop" style="width: 100px;">
+                    <option value="">-- Status --</option>
+                    <option value="IP">Em Progresso</option>
+                    <option value="CC">Encerrado</option>
+                </select>
+            </div>
+
+            <!-- Button -->
+            <div style="display: flex; flex-direction: row; min-width: max-content;">
+                <button type="button" class="no-print" id="saveStatusbtn" style="white-space: nowrap; margin-left: 5;">
+                    Salvar Status
+                </button>
+            </div>
+        </div>
+
+        <!--/////////////////Client ID//////////////////-->
+        <input type="hidden" id="clientID" style="width:100%;" />
+    </div>
+
+
+    <div style="margin-bottom: 20px; margin-top: 20px; display: flex; gap: 20px; align-items: flex-end;">
+        <div>
+            <label class="no-print" for="txtdatestart">Data Inicio:</label><br />
+            <input type="text" class="no-print" id="txtdatestart" />
+        </div>
+        <div>
+            <label class="no-print" for="txtdateend">Data Fim:</label><br />
+            <input type="text" class="no-print" id="txtdateend" />
+        </div>
+        <div>
+            <button type="button" class="no-print" id="clearDates" style="margin-right: 10px;">Limpar Datas</button>
+        </div>
+        <div>
+            <button  id="btnprintOdontograma" class="no-print, plus-button" onclick="window.print()" style="margin-left: 30px;">Imprimir Odontograma</button>
+        </div>
+
+    </div>
+
+    <div id="successMessageSaved" style="
+      display: none;
+      background-color: #d4edda;
+      color: #155724;
+      padding: 10px 20px;
+      border-radius: 6px;
+      margin-top: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      font-weight: bold;
+      ">
+        Consulta salva com sucesso!
+    </div>
+
+    <div id="successStatusSaved" style="
+      display: none;
+      background-color: #d4edda;
+      color: #155724;
+      padding: 10px 20px;
+      border-radius: 6px;
+      margin-top: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      font-weight: bold;
+      ">
+        Status Cliente salvo com sucesso!
+    </div>
+
+        <div id="successMessageDeleted" style="
+       display: none;
+       background-color: #d4edda;
+       color: #155724;
+       padding: 10px 20px;
+       border-radius: 6px;
+       margin-top: 10px;
+       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+       font-weight: bold;
+       ">
+            Consulta excluida com sucesso!
+        </div>
+
+
+    <div class="container" style="margin-top: 20px;">
+        <!--Grid declaration-->
+        <table id="mainGrid" class="display; no-print" style="width:40%">
+            <thead>
+                <tr>
+
+                    <th>Data</th>
+                    <th>Detalhes</th>
+                    <th>Montante</th>
+                    <th>Pago</th>
+                    <th>Recebido</th>
+                    <th>Notas</th>
+                    <th></th>
+                </tr>
+                <tr>
+
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                </tr>
+
+            </thead>
+            <tfoot>
+                <tr>
+
+                    <th>Data</th>
+                    <th>Detalhes</th>
+                    <th>Montante</th>
+                    <th>Pago</th>
+                    <th>Recebido</th>
+                    <th>Notas</th>
+                    <th></th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Edit/Delete Modal -->
+    <div id="editDeleteModal" style="display:none; position:fixed; top:20%; left:50%; transform:translate(-50%, 20%); background:#fff; border:1px solid #ccc; padding:20px; box-shadow:0 2px 10px rgba(0,0,0,0.2); z-index:1000;">
+        <h3>Editar Consulta</h3>
+        <!--<p id="selectedEventTitle" style="font-weight:bold;"></p>-->
+        <button id="editAppointmentBtn">Editar</button>
+        <button id="deleteAppointmentBtn">Excluir</button>
+        <button onclick="document.getElementById('editDeleteModal').style.display='none'">Cancelar</button>
+    </div>
+
+    <!-- Modal -->
+    <div id="AppointmentModal" style="display:none; position:fixed; top:1%; left:50%; transform:translate(-50%, 1%); background:#fff; border:1px solid #ccc; padding:20px; box-shadow:0 2px 10px rgba(0,0,0,0.2); z-index:1000;">
+        <h3>Info Consulta</h3>
+
+        <label>Data Consulta:</label><br>
+        <input type="text" id="appointmentDate" disabled style="width:100%;"><br><br>
+
+        <label>Pago:</label><br>
+        <select id="appointmentPaid" style="width:100%;">
+            <option value="">-- Pago --</option>
+            <option value="Yes">Sim</option>
+            <option value="No">Nao</option>
+        </select><br><br>
+
+        <label>Notas Consulta:</label><br>
+        <input type="text" id="appointmentNotes" style="width:100%;"><br><br>
+
+        <label>Detalhes Consulta:</label><br>
+        <textarea type="text" id="appointmentDetails" rows="10" style="width:100%;"></textarea><br><br>
+
+        <label>Montante $:</label><br>
+        <input type="number" id="appointmentAmount" step="0.01" min="0" required /><br><br>
+
+        <label>Recebido $:</label><br>
+        <input type="number" id="appointmentReceived" step="0.01" min="0" required"><br><br>
+
+
+        <input type="hidden" id="appointmentID" style="width:100%;" /><br><br>
+
+
+        <p id="modalMessage" style="font-weight: bold;"></p>
+
+        <button id="saveAppointmentBtn">Save</button>
+        <button onclick="document.getElementById('AppointmentModal').style.display = 'none'">Cancelar</button>
+    </div>
+
+
+
+    <div id="successMessageSaveImage" style="
+   display: none;
+   background-color: #d4edda;
+   color: #155724;
+   padding: 10px 20px;
+   border-radius: 6px;
+   margin-top: 10px;
+   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+   font-weight: bold;
+   ">
+        Odontograma salvo com sucesso!
+    </div>
+
+
+    <!--Image Editor Fabric.js Canvas-->
+    <div id="canvas-container" style="width: 1000px; margin-left: 10px;">
+
+
+
+
+        <div id="header-title" style="display: flex; margin-left:300px;">
+            <h2>Odontograma</h2>
+        </div>
+
+
+        <div id="controls" style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button id="save-image">Salvar Imagem</button><br /><br />
+
+            <!--<input type="file" id="upload-image" accept="image/*" />-->
+
+            <button class="no-print" id="toggle-pencil"></button>
+
+            <button class="no-print" id="toggle-deleter">Habilitar Excluir</button>
+
+            <button class="no-print" id="eraserBtn">Apagar</button>
+
+            <label class="no-print">
+
+                Cor do Lapis:
+                <input type="color" class="no-print" id="pencil-color" value="#ff0000" />
+            </label>
+
+            <label class="no-print">
+                Tamanho:
+                <input type="range" id="brush-size" class="no-print" min="1" max="20" value="2" />
+            </label>
+
+            <br /><br />
+        </div>
+
+        <canvas id="canvas" width="800" height="600" style="border:1px solid #ccc;"></canvas>
+
+    </div>
+
+    <script>
+        const canvas = new fabric.Canvas('canvas');
+
+        function detectMobile() {
+            return (window.innerWidth <= 768) || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        }
+
+        if (detectMobile()) {
+
+            document.getElementById('header-title').style.marginLeft = '20px';
+            document.getElementById('canvas-container').style.width = 300;
+            document.getElementById('canvas-container').style.height = 400;
+            document.getElementById('controls').style.flexDirection = 'column';
+            document.getElementById('controls').style.alignItems = 'flex-start';
+            document.getElementById('controls').style.gap = '10px';
+
+            document.getElementById('btnprintOdontograma').style.display = 'none';   
+            document.getElementById('btnListaclientes').style.display = 'none'; // Hide print button on mobile
+
+        }
+
+       
+
+        //// Load image from input
+        //document.getElementById('upload-image').addEventListener('change', (e) => {
+        //    const file = e.target.files[0];
+        //    if (!file) return;
+        //    const reader = new FileReader();
+        //    reader.onload = (event) => {
+        //        fabric.Image.fromURL(event.target.result, (img) => {
+        //            canvas.clear();
+        //            img.set({ left: 0, top: 0, selectable: false });
+        //            canvas.setWidth(img.width);
+        //            canvas.setHeight(img.height);
+        //            canvas.lowerCanvasEl.style.width = img.width + 'px';
+        //            canvas.lowerCanvasEl.style.height = img.height + 'px';
+        //            canvas.add(img);
+        //            canvas.renderAll();
+        //        });
+        //    };
+        //    reader.readAsDataURL(file);
+        //});
+
+        //Get Image from DB
+        // Global variables
+        
+        function loadImageToFabric() {
+            const url = `/api/clients/getimage/${clientId}`;
+            console.log("Fetching canvas JSON from:", url);
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data) throw new Error("No JSON returned from API");
+
+                    canvas.clear();
+                    canvas.loadFromJSON(data, () => {
+                        // Adjust canvas size to background image if needed
+                        if (canvas.backgroundImage) {
+
+                            var scaleX = 0.8;
+                            var scaleY = 0.7;
+
+                            if (!detectMobile()) {
+                                canvas.backgroundImage.scaleX = scaleX;
+                                canvas.backgroundImage.scaleY = scaleY;
+
+                                canvas.setWidth(canvas.backgroundImage.width * scaleX);
+                                canvas.setHeight(canvas.backgroundImage.height * scaleY);
+                            }
+                            else {
+
+                                const screenWidth = window.innerWidth;
+                                const screenHeight = window.innerHeight;
+
+                                // Fit image into ~90% of the screen
+                                scaleX = (screenWidth * 0.9) / imageWidth;
+                                scaleY = (screenHeight * 0.9) / imageHeight; 
+
+                                canvas.backgroundImage.scaleX = scaleX;
+                                canvas.backgroundImage.scaleY = scaleY;
+
+                                canvas.setWidth(canvas.backgroundImage.width * scaleX);
+                                canvas.setHeight(canvas.backgroundImage.height * scaleY);
+                            }
+
+                        }
+                        canvas.renderAll();
+                        console.log("Canvas fully loaded from API JSON");
+                    });
+                })
+                .catch(err => console.error("Error loading canvas from API:", err));
+        }
+
+
+        //Load Image
+        loadImageToFabric();
+
+
+        // Pencil tool setup
+        canvas.isDrawingMode = false;
+        canvas.freeDrawingBrush.color = 'red';
+        canvas.freeDrawingBrush.width = 2;
+
+        let pencilMode = false;
+        ///Pencil
+        const toggleBtn = document.getElementById('toggle-pencil');
+        toggleBtn.textContent = canvas.isDrawingMode ? 'Desativar Lapis' : 'Ativar Lapis';
+        toggleBtn.addEventListener('click', () => {
+
+            canvas.freeDrawingBrush.color = 'red';
+            canvas.freeDrawingBrush.width = 2;
+            pencilMode = !pencilMode;
+            canvas.isDrawingMode = pencilMode;
+            toggleBtn.textContent = canvas.isDrawingMode ? 'Desativar Lapis' : 'Ativar Lapis';
+            document.getElementById('toggle-deleter').style.visibility = pencilMode ? 'hidden' : 'visible';
+            document.getElementById('eraserBtn').style.visibility = pencilMode ? 'hidden' : 'visible';
+            //document.getElementById('toggle-deleter').textContent = deleteMode ? 'Disable Delete' : 'Enable Delete';
+
+        });
+
+
+        /////Deleter
+        let deleteMode = false;
+        document.getElementById('toggle-deleter').addEventListener('click', () => {
+            deleteMode = !deleteMode;
+            // canvas.isDrawingMode = !!deleteMode;
+            //toggleBtn.textContent = canvas.isDrawingMode ? 'Disable Pencil' : 'Enable Pencil';
+            canvas.defaultCursor = deleteMode ? 'crosshair' : 'default';
+            document.getElementById('toggle-deleter').textContent = deleteMode ? 'Desativar Excluir' : 'Ativar Excluir';
+        });
+
+        canvas.on('mouse:down', function (opt) {
+            if (!deleteMode) return;
+            const target = opt.target;
+            if (target && target !== backgroundImage) {
+                canvas.remove(target);
+            }
+        });
+
+        ///Eraser
+        const toggleBtnEraser = document.getElementById('eraserBtn');
+        toggleBtnEraser.addEventListener('click', () => {
+            canvas.isDrawingMode = true;
+            canvas.freeDrawingBrush.color = 'white';
+            canvas.freeDrawingBrush.width = 10;
+
+        });
+
+        document.getElementById('pencil-color').addEventListener('change', (e) => {
+            canvas.freeDrawingBrush.color = e.target.value;
+        });
+
+        document.getElementById('brush-size').addEventListener('input', (e) => {
+            canvas.freeDrawingBrush.width = parseInt(e.target.value, 10) || 1;
+        });
+
+
+
+
+        /// Save Modifications
+        document.getElementById('save-image').addEventListener('click', () => {
+            // Ensure a background image exists on the canvas
+            if (!canvas.backgroundImage) {
+                console.error("No background image loaded.");
+                return;
+            }
+
+            // Serialize canvas including all objects and background
+            const canvasJson = canvas.toJSON(['id', 'selectable', 'backgroundImage']); // include custom props if needed
+
+            const formData = new FormData();
+            formData.append('imageJson', JSON.stringify(canvasJson));
+            formData.append('id', clientId); // send client ID
+
+
+            // Send JSON to backend
+            fetch('/api/clients/uploadimage', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error('Upload failed');
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Upload successful:', data);
+
+                    // Show success message
+                    const msg = document.getElementById('successMessageSaveImage');
+                    msg.style.display = 'block';
+
+                    // Hide after 3 seconds
+                    setTimeout(() => {
+                        msg.style.display = 'none';
+                    }, 3000);
+                })
+                .catch(err => {
+                    console.error('Upload error:', err);
+                    alert('Failed to upload image');
+                });
+        });
+
+    </script>
+
+
+
+</body>
+
+    </html>
