@@ -1,0 +1,5 @@
+1. Instalar o arquivo na pasta Packages.
+2. Copiar a past Webapp para o Desktop.
+3. Copiar o Arquivo  Webapp_Run.bat para o Desktop.
+4. Executar o arquivo Webapp_Run no Desktop.
+5. Apos alguns instantes ira abrir o navegador com o WebApp.

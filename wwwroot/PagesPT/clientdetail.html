@@ -338,7 +338,7 @@
                     const data = window.eventBeingEdited;
                     const appointmentid = data.id;
 
-                    fetch(`/api/appointments/${clientId}`, {
+                    fetch(`/api/appointments/${appointmentid}`, {
                         method: 'DELETE',
                         headers: {
                             'Content-Type': 'application/json'
@@ -940,7 +940,7 @@
         canvas.on('mouse:down', function (opt) {
             if (!deleteMode) return;
             const target = opt.target;
-            if (target && target !== backgroundImage) {
+            if (target && target !== canvas.backgroundImage) {
                 canvas.remove(target);
             }
         });

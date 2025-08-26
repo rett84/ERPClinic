@@ -21,7 +21,7 @@ namespace ERPClinic.Components.Classes
 
     public class DBSelection
     {
-        public bool EF_Enabled { get; set; } = false;
+        public bool EF_Enabled { get; set; } = true;
 
     }
 

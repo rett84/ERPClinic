@@ -289,7 +289,7 @@
                 const amount = document.getElementById('expenseAmount').value || 0;
 
                 if (!expenseID) {
-                    const msg = `Expense must be selected`;
+                    const msg = `Despesa deve ser selecionada`;
                     document.getElementById('modalMessage').textContent = msg;
                     document.getElementById('modalMessage').style.color = 'red';
                     return;
@@ -414,8 +414,9 @@
                             .eq(index).empty()) // Add to row of the table header
                         .on('change', function () {
                             column
-                                .search($(this).val(), { exact: true })
+                                .search($(this).find('option:selected').text(), { exact: true })
                                 .draw();
+                            console.info($(this).find('option:selected').text());
                         });
                     if (index == 4) {
                        
@@ -548,7 +549,7 @@
 
         <p id="modalMessage" style="font-weight: bold;"></p>
 
-        <button id="saveExpenseBtn">Save</button>
+        <button id="saveExpenseBtn">Salvar</button>
         <button onclick="document.getElementById('ExpenseModal').style.display = 'none'">Cancelar</button>
     </div>
 

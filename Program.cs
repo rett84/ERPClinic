@@ -11,8 +11,11 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        //builder.Services.AddDbContext<AppDbContext>(options =>
+        //options.UseSqlServer(builder.Configuration.GetConnectionString("cloudConnection")));
+
         builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseSqlServer(builder.Configuration.GetConnectionString("cloudConnection")));
+        options.UseSqlite(builder.Configuration.GetConnectionString("SQLiteConn")));
 
 
         // Register IHttpContextAccessor
